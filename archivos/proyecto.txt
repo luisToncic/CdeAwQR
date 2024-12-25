@@ -1,0 +1,2603 @@
+Proyecto/
+│
+├── assets/
+│   ├── fondoABM.jpg
+│   ├── fondoOUT.jpg
+│   ├── foto3.png
+│   ├── logo-removebg-preview.png
+│   └── qr_code.png
+│
+├── bitacora/
+│   ├── bitacFront.php
+│   ├── bitacora_accesos.php
+│   ├── bitacora_auditoria.php
+│   ├── bitacora_tokens.php
+│   └── generate_report.php
+│
+├── codigoAcceso/
+│   ├── bQRGen.php
+│   ├── bTokenGen.php
+│   ├── bTokenVal.php
+│   ├── fCodigoExito.php
+│   └── fCodigoFail.php
+│
+├── css/
+│   ├── lABM.css
+│   └── styles.css
+│
+├── dataentry/
+│   ├── bABM.php
+│   ├── fABM.php
+│   ├── fABM_add.php
+│   ├── fABM_pers.php
+│   ├── fABM_usu.php
+│   ├── failentry.php
+│   ├── failrol.php
+│   ├── l_b_ABMfooter.php
+│   ├── l_f_ABM.php
+│   └── update.php
+│
+├── dependencies/
+│   ├── fpdf/
+│   │    └── archivos de la biblioteca
+│   └── phpqrcode/
+│        └── archivos de la biblioteca
+│
+├── includes/
+│   ├── db.php
+│   ├── footer.php
+│   └── header.php
+│
+├── js/
+│   └── scripts.js
+│
+├── login/
+│   ├── bLogin.php
+│   └── login.php
+│
+├── outscope/
+│   ├── fError.php
+│   ├── fOut.php
+│   ├── fWelcome.php
+│   └── ingresar.php
+│
+├── gestion.php
+├── index.php
+└── info.php
+
+a continuacion el codigo de cada archivo en orden de funcionamiento...
+
+db.php
+
+<?php
+
+// Datos de conexion a la base de datos
+
+$host = "localhost"; // servidor de base de datos 
+$dbname = "CdeABeltran24"; // nombre base de datos en prod: CdeABeltran24 || enloc: codaccesobeltran
+$username = "root"; // usuario de la base de datos
+$password = "NnKm9u.YgGGc"; // contraseña de la base de datos enprod: NnKm9u.YgGGc || enloc: void
+
+// Creo la conexion
+$conn = new mysqli($host, $username, $password, $dbname);
+
+// Verifico la conexion
+if ($conn->connect_error) {
+    die("Error de conexión: " . $conn->connect_error);
+}
+?>
+
+header.php
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Acceso Beltrán</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/styles.css">
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script> <!-- para recaptcha -->
+</head>
+<body>
+    
+footer.php
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+
+login.php
+
+<?php include_once ('../includes/header.php'); ?>
+
+<div class="container d-flex justify-content-center align-items-center min-vh-100">
+    <div class="card p-4 shadow-lg">
+        <div class="card-body login-box">
+            <div class="text-center mb-4 user-box">
+                <img src="../assets/logo-removebg-preview.png" alt="logo" class="img-fluid" style="max-height: 150px;">
+            </div>
+            <form id="loginForm" action="../login/bLogin.php" method="post" onsubmit="return validateCaptcha()"> 
+                <div class="mb-3 user-box">
+                    <input type="text" class="form-control" id="email" name="email" required>
+                    <label for="email">Ingrese nick</label>
+                </div>
+                <div class="mb-3 user-box">
+                    <input type="password" class="form-control" id="password" name="password" required>
+                    <label for="password">Ingrese Contraseña</label>
+                </div>
+                <!-- reCaptcha widget -->
+                <div class="mb-3 text-center">
+                    <div class="g-recaptcha" data-sitekey="6Lfu6SsqAAAAAFw5j8XosM-dL4TMfIOi1nrZzQfX"></div>
+                    <!-- Contenedor para mostrar el mensaje de error -->
+                        <div id="captcha-error" style="color: red; font-size: 14px; margin-top: 5px;"></div>
+                </div>
+                <!-- /reCaptcha widget -->
+                <div class="text-center">
+                    <button type="submit" class="btn btn-custom btn-primary-custom">Ingresar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://www.google.com/recaptcha/api.js" async defer></script> <!-- SCRIPT PARA USAR RECAPTCHAs -->
+
+<script>
+
+function validateCaptcha(event) {
+    var response = grecaptcha.getResponse();
+    var captchaError = document.getElementById('captcha-error');
+    
+    // Limpia cualquier mensaje previo
+    captchaError.innerHTML = "";
+
+    if (response.length === 0) {
+        // Si el captcha no ha sido completado, mostrar el mensaje de error
+        captchaError.innerHTML = "Por favor, completa el reCAPTCHA.";
+        return false; // Evita el envío del formulario
+    }
+    
+    return true; // Permite el envío del formulario si el CAPTCHA está completado
+}
+</script>
+
+<?php include_once ('../includes/footer.php'); ?>
+
+bLogin.php
+
+<?php
+session_start(); // Inicio de sesión para manejar variables de sesión
+require_once ('../includes/db.php'); // Incluye el archivo de conexión a la base de datos
+
+// Obtener los datos del formulario
+$email = $_POST['email']; // Captura el email ingresado por el usuario
+$password = $_POST['password']; // Captura la contraseña ingresada por el usuario
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $secret = '6Lfu6SsqAAAAAL6rzkxZh-6Uy6RMrYgDUGN41KRQ'; // Clave secreta para reCAPTCHA
+    $response = $_POST['g-recaptcha-response'];
+    $remoteip = $_SERVER['REMOTE_ADDR'];
+
+    // Verificar reCAPTCHA con el servidor de Google
+    $verify = file_get_contents("https://www.google.com/recaptcha/api/siteverify?secret={$secret}&response={$response}&remoteip={$remoteip}");
+    $captcha_success = json_decode($verify);
+
+    if (!$captcha_success->success) {
+        // El reCAPTCHA no fue resuelto correctamente
+        header("Location: ../codigoAcceso/fCodigoFail.php");
+        exit;
+    } else {
+        // Consulta para verificar las credenciales del usuario
+        $query = "SELECT * FROM usuarios WHERE usuario = ? AND contraseña = ? AND deleted = 0"; // Consulta SQL para buscar el usuario por email y contraseña
+        $stmt = $conn->prepare($query); // Prepara la consulta para evitar inyecciones SQL
+        $stmt->bind_param("ss", $email, $password); // Vincula los parámetros usuario y contraseña a la consulta
+        $stmt->execute(); // Ejecuta la consulta
+        $result = $stmt->get_result(); // Obtiene el resultado de la consulta
+
+        if ($result->num_rows > 0) { // Si se encuentra al menos una fila
+            $user = $result->fetch_assoc(); // Obtiene los datos del usuario
+
+            // Credenciales correctas, inicio de sesión exitoso
+            $_SESSION['usuario_id'] = $user['id']; // Almacena el ID del usuario en la sesión
+            header("Location: ../codigoAcceso/bTokenGen.php"); // Redirige a la generación del token
+            
+        } else {
+            // Email o contraseña incorrectos
+            header("Location: ../codigoAcceso/fCodigoFail.php"); // Redirige a la página de fallo
+        }
+
+        $stmt->close(); // Cierra la declaración preparada
+    }
+}
+
+$conn->close(); // Cierra la conexión a la base de datos
+?>
+
+bTokenGen.php
+
+<?php
+session_start();
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+require_once('../includes/db.php');
+
+// Obtener el ID del usuario desde la sesión
+$usuario_id = $_SESSION['usuario_id'];
+
+// Generar un token único
+$token = bin2hex(random_bytes(16)); // Genera un token aleatorio
+$fecha_creacion = date('Y-m-d H:i:s'); // Fecha y hora actual
+$fecha_expiracion = date('Y-m-d H:i:s', strtotime('+1 hour')); // Fecha y hora de expiración (1 hora desde ahora)
+
+//$fecha_expiracion = date('Y-m-d H:i:s', strtotime('+5 minutes')); // Fecha y hora de expiración (5 minutos desde ahora)
+//$fecha_expiracion = date('Y-m-d H:i:s', strtotime('+30 seconds')); // Fecha y hora de expiración (30 segundos desde ahora)
+
+// Insertar el token en la base de datos
+$query = "INSERT INTO tokens (usuario_id, token, fecha_creacion, fecha_expiracion) VALUES (?, ?, ?, ?)";
+$stmt = $conn->prepare($query);
+$stmt->bind_param("isss", $usuario_id, $token, $fecha_creacion, $fecha_expiracion);
+
+if ($stmt->execute()) {
+    // Redirigir a la generación del QR Code con el ID del token recién creado
+    $token_id = $stmt->insert_id;
+    header("Location: bQRGen.php?token_id=" . $token_id);
+} else {
+    echo "Error al generar el token.";
+}
+
+$stmt->close();
+$conn->close();
+?>
+
+bQRGen.php
+
+<?php
+require_once('../includes/db.php');
+require_once('../dependencies/phpqrcode/qrlib.php'); // Incluye la biblioteca phpqrcode
+
+// Definir la URL base
+$prefixUrl = "http://44.212.37.154/outScope/ingresar.php";
+
+// Obtener el ID del token de la URL
+$token_id = $_GET['token_id'];
+
+// Obtener el token de la base de datos
+$query = "SELECT token FROM tokens WHERE id = ?";
+$stmt = $conn->prepare($query);
+$stmt->bind_param("i", $token_id);
+$stmt->execute();
+$result = $stmt->get_result();
+
+if ($result->num_rows > 0) {
+    $row = $result->fetch_assoc();
+    $token = $row['token'];
+
+    
+    // Construir la URL completa con el token como parámetro
+    $url = $prefixUrl . "?token=" . urlencode($token);
+
+    // Generar el QR Code con la URL completa
+    $file_path = "../assets/qr_code.png"; // Ruta para guardar el QR Code
+    QRcode::png($url, $file_path, QR_ECLEVEL_L, 10); // Genera el QR Code con la URL completa
+    
+
+/*
+    // Verifica si el directorio de destino no existe.
+    $path = "../qrcodes/"; // Ruta para guardar los archivos QR Code
+    if (!file_exists($path)) {
+        // Crea el directorio de destino si no existe, con permisos de lectura, escritura y ejecución.
+        mkdir($path, 0777, true);
+    }
+
+    // Construir la URL completa con el token como parámetro
+    $url = $prefixUrl . "?token=" . urlencode($token);
+
+    // Generar el QR Code con la URL completa
+    $file_path = $path . "qr_code.png"; // Ruta completa para guardar el QR Code
+    QRcode::png($url, $file_path, QR_ECLEVEL_L, 10); // Genera el QR Code con la URL completa
+*/
+
+
+    // Redirigir a la página de éxito
+    header("Location: fCodigoExito.php?qr_code_path=" . urlencode($file_path));
+    exit; // Es importante salir del script después de la redirección
+} else {
+    echo "Token no encontrado.";
+}
+
+$stmt->close();
+$conn->close();
+?>
+
+ingresar.php
+
+<?php include_once('../includes/header.php'); ?>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="login-box text-center">
+                <div class="logo">
+                    <img src="../assets/logo-removebg-preview.png" alt="logo" style="max-width: 100px;">
+                </div>
+                <h2 class="mt-3 mb-4 text-white">LECTURA DE QR/TOKEN</h2>
+                <?php
+                // Obtener el token escaneado
+                $token_escaneado = $_GET['token'] ?? '';
+                ?>
+                <div class="mt-4 user-box">
+                    <form action="../codigoAcceso/bTokenVal.php" method="post">
+                    <?php
+                        echo '<input type="text" name="token" class="form-control mb-3" value="' . htmlspecialchars($token_escaneado) . '" >';
+                    ?>
+                    <label for="">Token</label>
+                    <!-- Botón "Enviar" -->
+                    <button type="submit" class="btn btn-custom btn-success-custom">ENVIAR</button>
+                    <br>
+                    <!-- Botón "Cancelar" va a la página de inicio -->
+                    <a href="../index.php" class="btn btn-custom btn-primary-custom">Cancelar</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<?php include_once('../includes/footer.php'); ?>
+
+bTokenVal.php
+
+<?php
+// Mostrar errores para depuración
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+require_once('../includes/db.php');
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    // Obtener el token enviado desde el formulario
+    $token = $_POST['token'] ?? '';
+
+    // Verificar si el token fue enviado correctamente
+    if (empty($token)) {
+        echo "Error: El token no fue proporcionado.";
+        exit();
+    }
+
+    // Mostrar el token recibido para verificarlo
+    echo "Token recibido: " . htmlspecialchars($token) . "<br>";
+
+    // Preparar la consulta para verificar el token en la base de datos
+    $query = "SELECT * FROM tokens WHERE token = ? AND fecha_expiracion > NOW() AND usado = 0";
+    $stmt = $conn->prepare($query);
+    
+    if (!$stmt) {
+        // Mostrar error si la preparación de la consulta falla
+        echo "Error en la consulta de verificación del token: " . $conn->error;
+        exit();
+    }
+
+    // Enlazar parámetros y ejecutar la consulta
+    $stmt->bind_param("s", $token);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows > 0) {
+        // Token válido
+        $row = $result->fetch_assoc();
+        $usuario_id = $row['usuario_id'];
+        $token_id = $row['id']; // Asumimos que 'id' es el 'token_id'
+
+        echo "Token válido. Usuario ID: " . $usuario_id . "<br>";
+        echo "Token ID: " . $token_id . "<br>";
+
+         // Actualizar el token a 'usado'
+        $query_usado = "UPDATE tokens SET usado = 1 WHERE id = ?";
+        $stmt_usado = $conn->prepare($query_usado);
+
+        if (!$stmt_usado) {
+            echo "Error al actualizar el estado del token: " . $conn->error;
+            exit();
+        }
+
+        $stmt_usado->bind_param("i", $token_id);
+        $stmt_usado->execute();
+
+
+
+        // Verificar el estado actual del usuario
+        $query_estado = "SELECT estado FROM usuarios WHERE id = ?";
+        $stmt_estado = $conn->prepare($query_estado);
+
+        if (!$stmt_estado) {
+            echo "Error en la consulta del estado del usuario: " . $conn->error;
+            exit();
+        }
+
+        $stmt_estado->bind_param("i", $usuario_id);
+        $stmt_estado->execute();
+        $result_estado = $stmt_estado->get_result();
+
+        if ($result_estado->num_rows > 0) {
+            $user = $result_estado->fetch_assoc();
+            $estado_actual = $user['estado'];
+
+            echo "Estado actual del usuario: " . $estado_actual . "<br>";
+
+            if ($estado_actual == 'fuera') {
+                // Cambiar el estado a 'dentro' y registrar el ingreso
+                $query_update = "UPDATE usuarios SET estado = 'dentro' WHERE id = ?";
+                $stmt_update = $conn->prepare($query_update);
+
+                if (!$stmt_update) {
+                    echo "Error al actualizar el estado del usuario: " . $conn->error;
+                    exit();
+                }
+
+                $stmt_update->bind_param("i", $usuario_id);
+                $stmt_update->execute();
+
+                // Registrar el ingreso en bitacoraAccesos
+                $query_acceso = "INSERT INTO bitacoraAccesos (idUsuario, token_id, fechaIngreso) VALUES (?, ?, NOW())";
+                $stmt_acceso = $conn->prepare($query_acceso);
+
+                if (!$stmt_acceso) {
+                    echo "Error al registrar el ingreso en la bitácora: " . $conn->error;
+                    exit();
+                }
+
+                $stmt_acceso->bind_param("ii", $usuario_id, $token_id); // Pasamos token_id también
+                $stmt_acceso->execute();
+
+                // Redirigir a fWelcome.php
+                echo "Usuario ahora está 'dentro'. Redirigiendo...";
+                header("Location: ../outScope/fWelcome.php");
+                exit();
+
+            } else {
+                // Cambiar el estado a 'fuera' y registrar el egreso
+                $query_update = "UPDATE usuarios SET estado = 'fuera' WHERE id = ?";
+                $stmt_update = $conn->prepare($query_update);
+
+                if (!$stmt_update) {
+                    echo "Error al actualizar el estado del usuario: " . $conn->error;
+                    exit();
+                }
+
+                $stmt_update->bind_param("i", $usuario_id);
+                $stmt_update->execute();
+
+                // Registrar el egreso en la bitácora
+                $query_acceso = "UPDATE bitacoraAccesos SET fechaEgreso = NOW() WHERE idUsuario = ? ORDER BY fechaIngreso DESC LIMIT 1";
+                $stmt_acceso = $conn->prepare($query_acceso);
+
+                if (!$stmt_acceso) {
+                    echo "Error al registrar el egreso en la bitácora: " . $conn->error;
+                    exit();
+                }
+
+                $stmt_acceso->bind_param("i", $usuario_id);
+                $stmt_acceso->execute();
+
+                // Redirigir a fOut.php
+                echo "Usuario ahora está 'fuera'. Redirigiendo...";
+                header("Location: ../outScope/fOut.php");
+                exit();
+            }
+        } else {
+            echo "Error: No se encontró el estado del usuario.";
+        }
+    } else {
+        // Token no válido o expirado
+        echo "Token inválido o expirado. Redirigiendo a la página de error.";
+        header("Location: ../outScope/fError.php");
+        exit();
+    }
+} else {
+    echo "Método no permitido. Solo se permite POST.";
+    header("Location: ../outScope/fError.php");
+    exit();
+}
+
+// Cerrar las conexiones
+$stmt->close();
+$conn->close();
+?>
+
+fError.php
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Acceso Beltrán</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    
+<style>
+    body {
+        background-color: red;
+    }
+    
+    .login-box {
+        background-color: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+    }
+</style>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="login-box text-center">
+                <div class="logo">
+                    <img src="../assets/logo-removebg-preview.png" alt="logo" style="max-width: 100px;">
+                </div>
+                <h2 class="mt-3 mb-4">ACCESO DENEGADO</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<?php include_once('../includes/footer.php'); ?>
+
+<script>
+    // Redirigir a la página de inicio después de 5 segundos
+    setTimeout(function() {
+        window.location.href = '../index.php';
+    }, 5000); // 5000 milisegundos = 5 segundos
+</script>
+
+fOut.php
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Acceso Beltrán</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    
+<style>
+    body {
+        background-color: green;
+    }
+    
+    .login-box {
+        background-color: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+    }
+</style>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="login-box text-center">
+                <div class="logo">
+                    <img src="../assets/logo-removebg-preview.png" alt="logo" style="max-width: 100px;">
+                </div>
+                <h2 class="mt-3 mb-4">Hasta luego !</h2>
+                <img src="../assets/foto3.png" alt="foto3" style="max-width: 100%;">
+            </div>
+        </div>
+    </div>
+</div>
+
+<?php include_once('../includes/footer.php'); ?>
+
+<script>
+    // Redirigir a la página de inicio después de 5 segundos
+    setTimeout(function() {
+        window.location.href = '../index.php';
+    }, 5000); // 5000 milisegundos = 5 segundos
+</script>
+
+fWelcome.php
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Acceso Beltrán</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    
+<style>
+    body {
+        background-color: green;
+    }
+    
+    .login-box {
+        background-color: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+    }
+</style>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="login-box text-center">
+                <div class="logo">
+                    <img src="../assets/logo-removebg-preview.png" alt="logo" style="max-width: 100px;">
+                </div>
+                <h2 class="mt-3 mb-4">Bienvenido</h2>
+                <img src="../assets/foto3.png" alt="foto3" style="max-width: 100%;">
+            </div>
+        </div>
+    </div>
+</div>
+
+<?php include_once('../includes/footer.php'); ?>
+
+<script>
+    // Redirigir a la página de inicio después de 5 segundos
+    setTimeout(function() {
+        window.location.href = '../index.php';
+    }, 5000); // 5000 milisegundos = 5 segundos
+</script>
+
+
+
+HASTA AQUI LO REFERIDO AL MODULO PARA EL INGRESO A LA INSTITUCION
+DESDE AQUI LO REFERIDO AL MODULO DE GESTION ABM
+
+
+
+l_f_ABM.php
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modulo de Gestión Beltrán</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/lABM.css">
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script> <!-- para reCaptcha -->
+</head>
+<body>
+    <div class="container d-flex justify-content-center align-items-center min-vh-100">
+        <div class="card p-4 shadow-lg">
+            <div class="card-body login-box">
+                <div class="text-center mb-4 user-box">
+                    <img src="../assets/logo-removebg-preview.png" alt="logo" class="img-fluid" style="max-height: 150px;">
+                </div>
+                <form id="loginForm" action="../dataEntry/l_b_ABM.php" method="post" onsubmit="return validateCaptcha()">
+                    <div class="mb-3 user-box">
+                        <input type="text" class="form-control" id="usuario" name="usuario" required>
+                        <label for="">Ingrese Usuario</label>
+                    </div>
+                    <div class="mb-3 user-box">
+                        <input type="password" class="form-control" id="password" name="password" required>
+                        <label for="">Ingrese Contraseña</label>
+                    </div>
+                    <!-- reCaptcha widget -->
+                    <div class="mb-3 text-center">
+                        <div class="g-recaptcha" data-sitekey="6Lfu6SsqAAAAAFw5j8XosM-dL4TMfIOi1nrZzQfX"></div>
+                        <!-- Contenedor para mostrar el mensaje de error -->
+                        <div id="captcha-error" style="color: red; font-size: 14px; margin-top: 5px;"></div>
+                    </div>
+                    <!-- /reCaptcha widget -->
+                    <div class="text-center">
+                        <button type="submit" class="btn btn-custom btn-primary-custom">Ingresar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+<?php include_once ('../includes/footer.php'); ?>
+
+<script>
+// Función para validar el reCAPTCHA antes de enviar el formulario
+function validateCaptcha(event) {
+    var response = grecaptcha.getResponse();
+    var captchaError = document.getElementById('captcha-error');
+    
+    // Limpia cualquier mensaje previo
+    captchaError.innerHTML = "";
+
+    if (response.length === 0) {
+        // Si el captcha no ha sido completado, mostrar el mensaje de error
+        captchaError.innerHTML = "Por favor, completa el reCAPTCHA.";
+        return false; // Evita el envío del formulario
+    }
+    
+    return true; // Permite el envío del formulario si el CAPTCHA está completado
+}
+</script>
+
+</body>
+</html>
+
+l_b_ABM.php
+
+<?php
+session_start();
+require_once ('../includes/db.php');
+
+// Obtener los datos del formulario
+$usuario = $_POST['usuario'];
+$password = $_POST['password'];
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $secret = '6Lfu6SsqAAAAAL6rzkxZh-6Uy6RMrYgDUGN41KRQ'; // Clave secreta para reCAPTCHA
+    $response = $_POST['g-recaptcha-response'];
+    $remoteip = $_SERVER['REMOTE_ADDR'];
+
+    // Verificar reCAPTCHA con el servidor de Google
+    $verify = file_get_contents("https://www.google.com/recaptcha/api/siteverify?secret={$secret}&response={$response}&remoteip={$remoteip}");
+    $captcha_success = json_decode($verify);
+
+    if (!$captcha_success->success) {
+        // El reCAPTCHA no fue resuelto correctamente
+        header("Location: ../dataEntry/failEntry.php"); // Redirige a la página de fallo
+        exit;
+    }
+    else{
+        // Consulta para verificar las credenciales del usuario
+        $query = "SELECT * FROM usuarios WHERE usuario = ? AND contraseña = ?";
+        $stmt = $conn->prepare($query);
+        $stmt->bind_param("ss", $usuario, $password);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($result->num_rows > 0) {
+            $user = $result->fetch_assoc(); // Obtiene los datos del usuario
+
+            // Verifica la contraseña
+            //if (password_verify($password, $user['contraseña'])) {
+                // Verificar si el usuario tiene el rol de 'directivo' o 'administrativo'
+                
+                if ($user['rol'] == 'directivo' || $user['rol'] == 'administrativo') {
+                    $_SESSION['usuario_id'] = $user['id'];
+                    $_SESSION['usuario'] = $user['usuario'];
+                    $_SESSION['rol'] = $user['rol'];
+                    header("Location: ../dataEntry/fABM.php");
+                } else {
+                    //echo "Acceso denegado. Sólo los usuarios con rol 'directivo' o 'administrativo' pueden ingresar.";
+                    header("Location: ../dataEntry/failRol.php"); // Redirige a la página de fallo
+                }
+            //} //else {
+                //echo "Contraseña incorrecta.";
+            //}
+        } else {
+            //echo "Usuario y/o contraseña incorrecta.";
+            header("Location: ../dataEntry/failEntry.php"); // Redirige a la página de fallo
+        }
+
+        $stmt->close();
+    }
+}
+
+$conn->close();
+?>
+
+
+failEntry.php
+    
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modulo de Gestión Beltrán</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/lABM.css">
+</head>
+    <body>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card text-center">
+                    <div class="logo">
+                        <img src="../assets/logo-removebg-preview.png" alt="logo" style="max-width: 100px;">
+                    </div>
+                    <h2 class="mt-3 mb-4 text-white">captcha, usuario ó contraseña INCORRECTOS</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<?php include_once('../includes/footer.php'); ?>
+
+<script>
+    // Redirigir a la página de inicio después de 5 segundos
+    setTimeout(function() {
+        window.location.href = '../gestion.php';
+    }, 2000); // 5000 milisegundos = 5 segundos
+</script>
+
+failRol.php
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modulo de Gestión Beltrán</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/lABM.css">
+</head>
+<body>
+    
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card text-center">
+                    <div class="logo">
+                        <img src="../assets/logo-removebg-preview.png" alt="logo" style="max-width: 100px;">
+                    </div>
+                    <h2 class="mt-3 mb-4 text-white">ACCESO DENEGADO. Sólo los usuarios con rol 'directivo' o 'administrativo' pueden ingresar.</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<?php include_once('../includes/footer.php'); ?>
+
+<script>
+    // Redirigir a la página de inicio después de 5 segundos
+    setTimeout(function() {
+        window.location.href = '../gestion.php';
+    }, 3000); // 5000 milisegundos = 5 segundos
+</script>
+
+
+fABM.php
+
+<?php
+//include '../includes/header.php';
+
+session_start();
+
+// Verificar si el usuario tiene permisos para acceder a esta página
+if (!isset($_SESSION['usuario_id'])) {
+    echo "<div class='alert alert-danger'>Acceso denegado.</div>";
+    exit();
+}
+
+// Obtener el rol del usuario desde la sesión
+$rol_usuario = $_SESSION['rol'];
+
+// Obtener el parámetro 'view' para determinar qué vista mostrar
+$view = isset($_GET['view']) ? $_GET['view'] : 'personas';
+
+// Función para sanitizar el parámetro 'view'
+function sanitize_view($view) {
+    $allowed_views = ['personas', 'agregar', 'usuarios'];
+    return in_array($view, $allowed_views) ? $view : 'personas';
+}
+
+$view = sanitize_view($view);
+
+// Títulos correspondientes a cada vista
+$view_titles = [
+    'personas' => 'Tabla de Personas',
+    'agregar' => 'Agregar Persona',
+    'usuarios' => 'Tabla de Usuarios'
+];
+?>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Personas y Usuarios</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.20/css/dataTables.bootstrap4.min.css">
+    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            background: #2980B9;
+            background: -webkit-linear-gradient(to right, #FFFFFF, #6DD5FA, #2980B9);
+            background: linear-gradient(to right, #FFFFFF, #6DD5FA, #2980B9);
+            margin: 0; 
+            padding: 0;
+        }
+
+        .table {
+            background-color: #495057;
+            color: #f3f4f6 !important;
+            border-radius: 8px;
+        }
+
+        .table thead th {
+            background-color: #212529;
+            border-color: #495057;
+        }
+
+        .table tbody tr:hover {
+            background-color: rgba(0, 123, 255, 0.2);
+        }
+
+        .button-group {
+            margin-bottom: 20px;
+        }
+
+        .button-group a {
+            margin-right: 10px;
+        }
+
+        .active-view {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        .button-container {
+            display: flex;
+            gap: 10px; /* Espaciado entre botones */
+            justify-content: flex-start; /* Alinea los botones a la izquierda */
+            align-items: center; /* Centra verticalmente */
+        }
+        .btn-icon {
+            display: inline-flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            width: 2.5rem !important;
+            height: 2.5rem !important;
+            border-radius: 50%;
+            font-size: 1.2rem !important;
+            margin: 0 5px !important;
+            transition: background-color 0.3s ease !important;
+        }
+
+        .btn-edit {
+            color: #fff !important;
+            background-color: #007bff !important;
+        }
+
+        .btn-edit:hover {
+            background-color: #0056b3 !important;
+        }
+
+        .btn-delete {
+            color: #fff !important;
+            background-color: #dc3545 !important;
+        }
+
+        .btn-delete:hover {
+            background-color: #a71d2a !important;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container mt-5 ml-5">
+        <!-- Título General y Botones -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="mb-0">Gestión de Personas y Usuarios</h2>
+            <div>
+                <?php if ($rol_usuario === 'directivo'): ?>
+                    <a href="/bitacora/bitacFront.php" class="btn btn-primary mr-2">Reportes</a>
+                <?php endif; ?>
+                <a href="https://44.212.37.154/gestion.php" class="btn btn-danger">Salir</a>
+            </div>
+        </div>
+
+        <!-- Botones para cambiar de vista -->
+        <div class="button-group">
+            <a href="fABM.php?view=agregar" class="btn btn-info">Agregar Persona</a>
+            <a href="fABM.php?view=personas" class="btn btn-info">Tabla de Personas</a>
+            <a href="fABM.php?view=usuarios" class="btn btn-info">Tabla de Usuarios</a>
+        </div>
+
+        <div class="ml-2">
+            <!-- Contenedor para las vistas -->
+            <div id="personas-view" class="table-container" <?php echo ($view === 'personas') ? 'style="display:block;"' : 'style="display:none;"'; ?>>
+                <?php include 'fABM_pers.php'; ?>
+            </div>
+            <div id="agregar-view" class="table-container" <?php echo ($view === 'agregar') ? 'style="display:block;"' : 'style="display:none;"'; ?>>
+                <?php include 'fABM_add.php'; ?>
+            </div>
+            <div id="usuarios-view" class="table-container" <?php echo ($view === 'usuarios') ? 'style="display:block;"' : 'style="display:none;"'; ?>>
+                <?php include 'fABM_usu.php'; ?>
+            </div>
+        </div>
+    </div>
+
+    <!-- jQuery, Bootstrap JS, and DataTables JS -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.20/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.20/js/dataTables.bootstrap4.min.js"></script>
+
+    <script>
+        $(document).ready(function() {
+            // Inicializar DataTables en todas las tablas
+            $('#personasTable, #usuariosTable').DataTable({
+                "language": {
+                    "url": "//cdn.datatables.net/plug-ins/1.10.20/i18n/Spanish.json"
+                },
+                "pageLength": 10
+            });
+        });
+    </script>
+</body>
+</html>
+
+fABM_add.php
+
+<?php
+//include '../includes/header.php';
+
+session_start();
+
+// Verificar si el usuario tiene permisos para acceder a esta página
+if (!isset($_SESSION['usuario_id'])) {
+    echo "<div class='alert alert-danger'>Acceso denegado.</div>";
+    exit();
+}
+
+// Obtener el rol del usuario desde la sesión
+$rol_usuario = $_SESSION['rol'];
+?>
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agregar Persona</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+    <style>
+        body {
+            background: #2980B9;
+            background: -webkit-linear-gradient(to right, #FFFFFF, #6DD5FA, #2980B9);
+            background: linear-gradient(to right, #FFFFFF, #6DD5FA, #2980B9);
+        }
+
+        .form-label {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <!-- Título -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2>Agregar Persona</h2>
+            <!-- <a href="fABM.php?view=personas" class="btn btn-primary">Volver a la Tabla de Personas</a> -->
+        </div>
+
+        <!-- Formulario para agregar persona -->
+        <form action="bABM.php" method="POST">
+            <input type="hidden" name="form_type" value="personas">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label for="nombre" class="form-label">Nombre:</label>
+                    <input type="text" class="form-control" name="nombre" oninput='validarLetras(this)' required>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="apellido" class="form-label">Apellido:</label>
+                    <input type="text" class="form-control" name="apellido" oninput='validarLetras(this)' required>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="edad" class="form-label">Edad:</label>
+                    <input type="number" class="form-control" name="edad" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="dni" class="form-label">DNI:</label>
+                    <input type="text" class="form-control" name="dni" maxlength="8" oninput="validarNumerico(this)" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="mail" class="form-label">Mail:</label>
+                    <input type="email" class="form-control" name="mail" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="telefono" class="form-label">Teléfono:</label>
+                    <input type="text" class="form-control" name="telefono" oninput="validarNumerico(this)" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="direccion" class="form-label">Dirección:</label>
+                    <input type="text" class="form-control" name="direccion" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="localidad" class="form-label">Localidad:</label>
+                    <input type="text" class="form-control" name="localidad" oninput='validarLetras(this)' required>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="legajo" class="form-label">Legajo:</label>
+                    <input type="text" class="form-control" name="legajo" required>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="carrera" class="form-label">Carrera:</label>
+                    <input type="text" class="form-control" name="carrera" oninput='validarLetras(this)' required>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="turno" class="form-label">Turno:</label>
+                    <select name="turno" class="form-control" required>
+                        <option value="Mañana">Mañana</option>
+                        <option value="Tarde">Tarde</option>
+                        <option value="Noche">Noche</option>
+                    </select>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label for="rol" class="form-label">Rol:</label>
+                    <select name="rol" class="form-control" required>
+                        <option value="personal">Personal</option>
+                        <option value="alumno">Alumno</option>
+                        <option value="docente">Docente</option>
+                        <option value="directivo">Directivo</option>
+                        <option value="administrativo">Administrativo</option>
+                        <option value="invitado">Invitado</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" name="action" value="Agregar" class="btn btn-success">Agregar</button>
+        </form>
+    </div>
+
+    <!-- Scripts de validación -->
+    <script>
+        function validarNumerico(input) {
+            var regex = /^[0-9]*$/;
+            var valor = input.value;
+            if (!regex.test(valor)) {
+                input.value = valor.replace(/[^\d]/g, '');
+            }
+        }
+        function validarLetras(input) {
+            var regex = /^[A-Za-z\s]*$/;
+            var valor = input.value;
+            if (!regex.test(valor)) {
+                input.value = valor.replace(/[^A-Za-z\s]/g, '');
+            }
+        }
+    </script>
+</body>
+</html>
+
+
+fABM_pers.php
+
+<?php
+//include '../includes/header.php';
+include '../includes/db.php';
+
+session_start();
+if (!isset($_SESSION['usuario_id']) || $_SESSION['rol'] != 'directivo') {
+    echo "<div class='alert alert-danger'>Acceso denegado.</div>";
+    exit();
+}
+?>
+<div class="container mt-5">
+    <h2 class="primary-text">TABLA PERSONAS</h2>
+    <table id="personasTable" class="table table-striped table-bordered">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Apellido</th>
+                <th>Edad</th>
+                <th>DNI</th>
+                <th>Mail</th>
+                <th>Teléfono</th>
+                <th>Dirección</th>
+                <th>Localidad</th>
+                <th>Legajo</th>
+                <th>Carrera</th>
+                <th>Turno</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php
+            $sql = "SELECT * FROM personas WHERE deleted = 0";
+            $result = $conn->query($sql);
+            while ($row = $result->fetch_assoc()) {
+                echo "<tr>";
+                echo "<td>" . $row["id"] . "</td>";
+                echo "<td>" . $row["nombre"] . "</td>";
+                echo "<td>" . $row["apellido"] . "</td>";
+                echo "<td>" . $row["edad"] . "</td>";
+                echo "<td>" . $row["dni"] . "</td>";
+                echo "<td>" . $row["mail"] . "</td>";
+                echo "<td>" . $row["telefono"] . "</td>";
+                echo "<td>" . $row["direccion"] . "</td>";
+                echo "<td>" . $row["localidad"] . "</td>";
+                echo "<td>" . $row["legajo"] . "</td>";
+                echo "<td>" . $row["carrera"] . "</td>";
+                echo "<td>" . $row["turno"] . "</td>";
+                echo "<td>
+                    <div class='button-container'>    
+                        <a href='update.php?type=personas&id=" . $row["id"] . "' class='btn btn-light btn-icon btn-edit'>
+                            <i class='fas fa-edit' title='Editar'></i>
+                        </a>
+                        <form action='bABM.php' method='POST' style='display:inline;' onsubmit='return confirmDelete()'>
+                            <input type='hidden' name='form_type' value='personas'>
+                            <input type='hidden' name='person_id' value='" . $row["id"] . "'>
+                            <input type='hidden' name='action' value='Eliminar'>
+                            <button type='submit' class='btn btn-light btn-icon btn-delete'>
+                                <i class='fas fa-trash-alt' title='Eliminar'></i>
+                            </button>
+                        </form>
+                    </div>
+                </td>";
+                echo "</tr>";
+            }
+            ?>
+        </tbody>
+    </table>
+</div>
+
+<script>
+    $(document).ready(function() {
+        $('#personasTable').DataTable({
+            language: { url: "//cdn.datatables.net/plug-ins/1.10.20/i18n/Spanish.json" }
+        });
+    });
+    function confirmDelete() {
+        return confirm("¿Seguro desea eliminar?");
+    }
+</script>
+<?php include '../includes/footer.php'; ?>
+
+fABM_usu.php
+
+<?php
+//include '../includes/header.php';
+include '../includes/db.php';
+
+session_start();
+if (!isset($_SESSION['usuario_id']) || $_SESSION['rol'] != 'directivo') {
+    echo "<div class='alert alert-danger'>Acceso denegado.</div>";
+    exit();
+}
+?>
+<div class="container mt-5">
+    <h2 class="primary-text">TABLA USUARIOS</h2>
+    <table id="usuariosTable" class="table table-striped table-bordered">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Usuario</th>
+                <th>Contraseña</th>
+                <th>Rol</th>
+                <th>Legajo</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php
+            $sql = "SELECT * FROM usuarios WHERE deleted = 0";
+            $result = $conn->query($sql);
+            while ($row = $result->fetch_assoc()) {
+                echo "<tr>";
+                echo "<td>" . $row["id"] . "</td>";
+                echo "<td>" . $row["usuario"] . "</td>";
+                echo "<td>" . $row["contraseña"] . "</td>";
+                echo "<td>" . $row["rol"] . "</td>";
+                echo "<td>" . $row["legajo"] . "</td>";
+                echo "<td>
+                    <div class='button-container'>    
+                        <a href='update.php?type=usuarios&id=" . $row["id"] . "' class='btn btn-light btn-icon btn-edit'>
+                            <i class='fas fa-edit' title='Editar'></i>
+                        </a>
+
+                        <form action='bABM.php' method='POST' style='display:inline;' onsubmit='return confirmDelete()'>
+                            <input type='hidden' name='form_type' value='usuarios'>
+                            <input type='hidden' name='user_id' value='" . $row["id"] . "'>
+                            <input type='hidden' name='action' value='Eliminar'>
+                            <button type='submit' class='btn btn-light btn-icon btn-delete'>
+                                <i class='fas fa-trash-alt' title='Eliminar'></i>
+                            </button>
+                        </form>
+                    </div>
+                </td>";
+                echo "</tr>";
+            }
+            ?>
+        </tbody>
+    </table>
+</div>
+
+<script>
+    $(document).ready(function() {
+        $('#usuariosTable').DataTable({
+            language: { url: "//cdn.datatables.net/plug-ins/1.10.20/i18n/Spanish.json" }
+        });
+    });
+    function confirmDelete() {
+        return confirm("¿Seguro desea eliminar?");
+    }
+</script>
+<?php include '../includes/footer.php'; ?>
+
+update.php
+
+<?php
+include '../includes/db.php';
+
+function registrarAuditoria($conn, $idUsuario, $accion, $descripcion) {
+    $query = "INSERT INTO auditoria (idUsuario, accion, descripcion) VALUES (?, ?, ?)";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("iss", $idUsuario, $accion, $descripcion);
+    $stmt->execute();
+    $stmt->close();
+}
+
+session_start();
+$idUsuario = $_SESSION['usuario_id'];
+
+?>
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Actualizar Registro</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+    <style>
+        body {
+            background: #2980B9;
+            background: -webkit-linear-gradient(to right, #FFFFFF, #6DD5FA, #2980B9);
+            background: linear-gradient(to right, #FFFFFF, #6DD5FA, #2980B9);
+        }
+
+        .form-label {
+            font-weight: bold;
+        }
+
+        .btn-icon {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 50%;
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <?php
+        if (isset($_GET['type']) && isset($_GET['id'])) {
+            $type = $_GET['type'];
+            $id = $_GET['id'];
+
+            if ($_SERVER["REQUEST_METHOD"] == "POST") {
+                if ($type == 'personas') {
+                    $nombre = $_POST['nombre'];
+                    $apellido = $_POST['apellido'];
+                    $edad = $_POST['edad'];
+                    $dni = $_POST['dni'];
+                    $mail = $_POST['mail'];
+                    $telefono = $_POST['telefono'];
+                    $direccion = $_POST['direccion'];
+                    $localidad = $_POST['localidad'];
+                    $legajo = $_POST['legajo'];
+                    $carrera = $_POST['carrera'];
+                    $turno = $_POST['turno'];
+
+                    $sql = "UPDATE personas SET nombre='$nombre', apellido='$apellido', edad=$edad, dni='$dni', mail='$mail', telefono='$telefono', direccion='$direccion', localidad='$localidad', legajo='$legajo', carrera='$carrera', turno='$turno' WHERE id=$id";
+
+                    if ($conn->query($sql) === TRUE) {
+                        registrarAuditoria($conn, $idUsuario, 'Modificar Persona', "Persona modificada: $nombre $apellido, DNI: $dni");
+                        echo '<div class="alert alert-success mt-3" role="alert">Datos actualizados exitosamente</div>';
+                    } else {
+                        echo '<div class="alert alert-danger mt-3" role="alert">Error al actualizar los datos: ' . $conn->error . '</div>';
+                    }
+                } elseif ($type == 'usuarios') {
+                    $usuario = $_POST['usuario'];
+                    $contraseña = $_POST['contraseña'];
+                    $rol = $_POST['rol'];
+                    $estado = $_POST['estado'];
+                    $legajo = $_POST['legajo'];
+
+                    $sql = "UPDATE usuarios SET usuario='$usuario', contraseña='$contraseña', rol='$rol', estado='$estado', legajo='$legajo' WHERE id=$id";
+
+                    if ($conn->query($sql) === TRUE) {
+                        registrarAuditoria($conn, $idUsuario, 'Modificar Usuario', "Usuario modificado: $usuario, Legajo: $legajo");
+                        echo '<div class="alert alert-success mt-3" role="alert">Datos actualizados exitosamente</div>';
+                    } else {
+                        echo '<div class="alert alert-danger mt-3" role="alert">Error al actualizar los datos: ' . $conn->error . '</div>';
+                    }
+                }
+            }
+
+            $sql = "SELECT * FROM $type WHERE id=$id";
+            $result = $conn->query($sql);
+
+            if ($result->num_rows > 0) {
+                $row = $result->fetch_assoc();
+
+                echo "<h2 class='my-4'>Actualizar " . ucfirst($type) . "</h2>";
+                echo "<form method='post'><div class='row'>";
+                foreach ($row as $key => $value) {
+                    $label = ucfirst($key);
+                    if ($key == 'nombre' || $key == 'apellido' || $key == 'localidad') {
+                        echo "<div class='col-md-4 mb-3'>";
+                        echo "<label for='$key' class='form-label'>$label:</label>";
+                        echo "<input type='text' class='form-control' name='$key' id='$key' value='$value' oninput='validarLetras(this)'>";
+                        echo "</div>";
+                    } elseif ($key == 'turno' || ($type == 'usuarios' && $key == 'rol')) {
+                        echo "<div class='col-md-4 mb-3'>";
+                        echo "<label for='$key' class='form-label'>$label:</label>";
+                        echo "<select name='$key' class='form-control' id='$key'>";
+                        if ($key == 'turno') {
+                            echo "<option value='Mañana' " . ($value == 'Mañana' ? 'selected' : '') . ">Mañana</option>";
+                            echo "<option value='Tarde' " . ($value == 'Tarde' ? 'selected' : '') . ">Tarde</option>";
+                            echo "<option value='Noche' " . ($value == 'Noche' ? 'selected' : '') . ">Noche</option>";
+                        } elseif ($key == 'rol') {
+                            echo "<option value='personal' " . ($value == 'personal' ? 'selected' : '') . ">Personal</option>";
+                            echo "<option value='alumno' " . ($value == 'alumno' ? 'selected' : '') . ">Alumno</option>";
+                            echo "<option value='docente' " . ($value == 'docente' ? 'selected' : '') . ">Docente</option>";
+                            echo "<option value='directivo' " . ($value == 'directivo' ? 'selected' : '') . ">Directivo</option>";
+                            echo "<option value='administrativo' " . ($value == 'administrativo' ? 'selected' : '') . ">Administrativo</option>";
+                            echo "<option value='invitado' " . ($value == 'invitado' ? 'selected' : '') . ">Invitado</option>";
+                        }
+                        echo "</select>";
+                        echo "</div>";
+                    } else {
+                        echo "<div class='col-md-4 mb-3'>";
+                        echo "<label for='$key' class='form-label'>$label:</label>";
+                        echo "<input type='text' class='form-control' name='$key' id='$key' value='$value'>";
+                        echo "</div>";
+                    }
+                }
+                echo "</div><button type='submit' class='btn btn-success'>Actualizar</button>";
+                echo "</form>";
+                echo "<a href='fABM.php' class='btn btn-secondary mt-3'>Volver</a>";
+            } else {
+                echo '<div class="alert alert-warning mt-3" role="alert">No se encontraron datos para actualizar</div>';
+            }
+        } else {
+            echo '<div class="alert alert-danger mt-3" role="alert">Error: Tipo de entidad o ID no proporcionados</div>';
+        }
+        ?>
+    </div>
+
+    <script>
+        function validarNumerico(input) {
+            var regex = /^[0-9]*$/;
+            var valor = input.value;
+            if (!regex.test(valor)) {
+                input.value = valor.replace(/[^\d]/g, '');
+            }
+        }
+
+        function validarLetras(input) {
+            var regex = /^[A-Za-z\s]*$/;
+            var valor = input.value;
+            if (!regex.test(valor)) {
+                input.value = valor.replace(/[^A-Za-z\s]/g, '');
+            }
+        }
+    </script>
+</body>
+</html>
+
+bABM.php
+
+<?php
+include '../includes/db.php';
+
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+
+function showAlertAndRedirect($message) {
+    echo "<script type='text/javascript'>alert('$message'); window.location.href = 'fABM.php';</script>";
+}
+
+function registrarAuditoria($conn, $idUsuario, $accion, $descripcion) {
+    $query = "INSERT INTO auditoria (idUsuario, accion, descripcion) VALUES (?, ?, ?)";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("iss", $idUsuario, $accion, $descripcion);
+    $stmt->execute();
+    $stmt->close();
+}
+
+session_start();
+$idUsuario = $_SESSION['usuario_id'];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $form_type = $_POST['form_type'];
+
+    if ($form_type === 'personas') {
+        $action = $_POST['action'];
+
+        if ($action === 'Agregar') {
+            $nombre = mysqli_real_escape_string($conn, $_POST['nombre']);
+            $apellido = mysqli_real_escape_string($conn, $_POST['apellido']);
+            $edad = mysqli_real_escape_string($conn, $_POST['edad']);
+            $dni = mysqli_real_escape_string($conn, $_POST['dni']);
+            $mail = mysqli_real_escape_string($conn, $_POST['mail']);
+            $telefono = mysqli_real_escape_string($conn, $_POST['telefono']);
+            $direccion = mysqli_real_escape_string($conn, $_POST['direccion']);
+            $localidad = mysqli_real_escape_string($conn, $_POST['localidad']);
+            $legajo = mysqli_real_escape_string($conn, $_POST['legajo']);
+            $carrera = mysqli_real_escape_string($conn, $_POST['carrera']);
+            $turno = mysqli_real_escape_string($conn, $_POST['turno']);
+            $rol = mysqli_real_escape_string($conn, $_POST['rol']);
+            $estado = 'fuera'; // Estado por defecto
+
+            // Verificar si el DNI ya existe
+            $sql = "SELECT * FROM personas WHERE dni = '$dni'";
+            $result = $conn->query($sql);
+
+            if ($result->num_rows > 0) {
+                showAlertAndRedirect("Error: El DNI ya existe.");
+            } else {
+                // Insertar en la tabla personas
+                $sql = "INSERT INTO personas (nombre, apellido, edad, dni, mail, telefono, direccion, localidad, legajo, carrera, turno) 
+                        VALUES ('$nombre', '$apellido', '$edad', '$dni', '$mail', '$telefono', '$direccion', '$localidad', '$legajo', '$carrera', '$turno')";
+
+                if ($conn->query($sql) === TRUE) {
+                    // Crear usuario automáticamente
+                    $usuario = strtolower($nombre . '.' . $apellido);
+                    $contraseña = 'Beltran*';
+                    
+                    $sql_usuario = "INSERT INTO usuarios (usuario, contraseña, rol, estado, legajo) 
+                                    VALUES ('$usuario', '$contraseña', '$rol', '$estado', '$legajo')";
+
+                    if ($conn->query($sql_usuario) === TRUE) {
+                        // Registrar acción en auditoría
+                        registrarAuditoria($conn, $idUsuario, 'Agregar Persona', "Persona agregada: $nombre $apellido, DNI: $dni");
+                        showAlertAndRedirect("Nueva persona y usuario agregados correctamente.");
+                    } else {
+                        showAlertAndRedirect("Error al agregar el usuario: " . $conn->error);
+                    }
+                } else {
+                    showAlertAndRedirect("Error al agregar la persona: " . $conn->error);
+                }
+            }
+        } elseif ($action === 'Eliminar') {
+            if (isset($_POST['person_id'])) {
+                $person_id = mysqli_real_escape_string($conn, $_POST['person_id']);
+
+                // Verificar si la persona tiene un usuario asociado
+                $sql_check = "SELECT * FROM usuarios WHERE legajo = (SELECT legajo FROM personas WHERE id = $person_id) AND deleted = 0";
+                $result_check = $conn->query($sql_check);
+
+                if ($result_check->num_rows > 0) {
+                    showAlertAndRedirect("Persona con usuario asociado. Debe primero borrar al usuario, para poder borrar a la persona.");
+                } else {
+                    // Obtener información de la persona antes de eliminarla
+                    $sql_info = "SELECT nombre, apellido FROM personas WHERE id = $person_id";
+                    $result_info = $conn->query($sql_info);
+                    $persona_info = $result_info->fetch_assoc();
+                    
+                                // Eliminar persona
+                                //$sql = "DELETE FROM personas WHERE id = $person_id";
+                    // Actualizar el campo `deleted` para marcar el usuario como eliminado
+                    $sql = "UPDATE personas SET deleted = 1 WHERE id = $person_id";
+
+                    if ($conn->query($sql) === TRUE) {
+                        // Registrar acción en auditoría
+                        registrarAuditoria($conn, $idUsuario, 'Eliminar Persona', "Persona eliminada: " . $persona_info['nombre'] . " " . $persona_info['apellido']);
+                        showAlertAndRedirect("Persona eliminada correctamente.");
+                    } else {
+                        showAlertAndRedirect("Error al eliminar la persona: " . $conn->error);
+                    }
+                }
+            }
+        }
+    } elseif ($form_type === 'usuarios') {
+        $action = $_POST['action'];
+
+        if ($action === 'Eliminar') {
+            if (isset($_POST['user_id'])) {
+                $user_id = mysqli_real_escape_string($conn, $_POST['user_id']);
+
+                // Obtener información del usuario antes de eliminarlo
+                $sql_info = "SELECT usuario FROM usuarios WHERE id = $user_id";
+                $result_info = $conn->query($sql_info);
+                $usuario_info = $result_info->fetch_assoc();
+
+                // Actualizar el campo `deleted` para marcar el usuario como eliminado
+                $sql = "UPDATE usuarios SET deleted = 1 WHERE id = $user_id";
+
+                if ($conn->query($sql) === TRUE) {
+                    registrarAuditoria($conn, $idUsuario, 'Eliminar Usuario', "Usuario eliminado: " . $usuario_info['usuario']);
+                    showAlertAndRedirect("Usuario eliminado correctamente.");
+                } else {
+                    error_log("Error al eliminar el usuario: " . $conn->error);
+                    showAlertAndRedirect("Error al eliminar el usuario.");
+                }
+            }
+        }
+    }
+}
+
+$conn->close();
+?>
+
+
+
+HASTA AQUI EL MODULO DE GESTION ABM
+DESDE AQUI EL MODULO DE AUDIOTORIA Y REPORTES
+
+
+
+bitacFront.php
+
+<?php
+session_start();
+include '../includes/db.php';
+
+// Habilitar la visualización de errores para depuración
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+// Verificar si el usuario tiene permisos para acceder a esta página
+if (!isset($_SESSION['usuario_id']) || $_SESSION['rol'] != 'directivo') {
+    echo "<div class='alert alert-danger'>Acceso denegado.</div>";
+    exit();
+}
+
+$acciones = ['Agregar Persona', 'Eliminar Persona', 'Eliminar Usuario', 'Modificar Persona', 'Modificar Usuario'];
+
+// Obtener el parámetro 'view' para determinar qué vista mostrar
+$view = isset($_GET['view']) ? $_GET['view'] : 'auditoria';
+
+// Función para sanitizar el parámetro 'view'
+function sanitize_view($view) {
+    $allowed_views = ['auditoria', 'accesos', 'tokens'];
+    return in_array($view, $allowed_views) ? $view : 'auditoria';
+}
+
+$view = sanitize_view($view);
+
+// Títulos correspondientes a cada vista
+$view_titles = [
+    'auditoria' => 'Auditoría',
+    'accesos' => 'Accesos',
+    'tokens' => 'Tokens'
+];
+?>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bitácora</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.20/css/dataTables.bootstrap4.min.css">
+   
+    <style>
+        body {
+            background: #2980B9;
+            background: -webkit-linear-gradient(to right, #FFFFFF, #6DD5FA, #2980B9);
+            background: linear-gradient(to right, #FFFFFF, #6DD5FA, #2980B9);
+        }
+
+        .table {
+            background-color: #495057;
+            color: #f3f4f6;
+            border-radius: 8px;
+        }
+
+        .table thead th {
+            background-color: #212529;
+            border-color: #495057;
+        }
+
+        .table tbody tr:hover {
+            background-color: rgba(0, 123, 255, 0.2);
+        }
+
+        .button-group {
+            margin-bottom: 20px;
+        }
+
+        .button-group a {
+            margin-right: 10px;
+        }
+
+        .header-buttons {
+            margin-bottom: 20px;
+        }
+
+        .active-view {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+    </style>
+
+</head>
+
+<body>
+    <div class="container mt-5">
+        <!-- Título General y Botones -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="mb-0">Bitácora</h2>
+            <div>
+                <a href="https://44.212.37.154/dataEntry/fABM.php" class="btn btn-warning mr-2">Atrás</a>
+                <a href="https://44.212.37.154/gestion.php" class="btn btn-danger">Salir</a>
+            </div>
+        </div>
+
+        <!-- Indicador de Vista Activa -->
+        <div class="active-view">
+            <?php echo isset($view_titles[$view]) ? $view_titles[$view] : 'Auditoría'; ?>
+        </div>
+
+        <!-- Botones para cambiar de vista -->
+        <div class="button-group">
+            <a href="bitacFront.php?view=auditoria" class="btn btn-info">Bitácora de Auditoría</a>
+            <a href="bitacFront.php?view=accesos" class="btn btn-info">Bitácora de Accesos</a>
+            <a href="bitacFront.php?view=tokens" class="btn btn-info">Bitácora de Tokens</a>
+        </div>
+
+        <!-- Contenedor para las vistas -->
+        <div id="auditoria-view" class="table-container" <?php echo ($view === 'auditoria') ? 'style="display:block;"' : 'style="display:none;"'; ?>>
+            <?php include 'bitacora_auditoria.php'; ?>
+        </div>
+        <div id="accesos-view" class="table-container" <?php echo ($view === 'accesos') ? 'style="display:block;"' : 'style="display:none;"'; ?>>
+            <?php include 'bitacora_accesos.php'; ?>
+        </div>
+        <div id="tokens-view" class="table-container" <?php echo ($view === 'tokens') ? 'style="display:block;"' : 'style="display:none;"'; ?>>
+            <?php include 'bitacora_tokens.php'; ?>
+        </div>
+
+        <!-- Botones de Exportar -->
+        <div class="form-row mt-3">
+            <div class="col-md-12 d-flex align-items-end">
+                <?php
+                // Construir la URL para exportar CSV incluyendo todos los parámetros GET actuales
+                $export_params = $_GET;
+                $export_params['format'] = 'csv';
+                $export_url = 'generate_report.php?' . http_build_query($export_params);
+                ?>
+                <a href="<?php echo htmlspecialchars($export_url); ?>" class="btn btn-success mr-2" target="_blank">Exportar CSV</a>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- jQuery, Bootstrap JS, and DataTables JS -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.20/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.20/js/dataTables.bootstrap4.min.js"></script>
+
+    <script>
+        $(document).ready(function() {
+            // Inicializar DataTables solo en la tabla visible
+            <?php if ($view === 'auditoria'): ?>
+                $('#auditoriaTable').DataTable({
+                    "language": {
+                        "url": "//cdn.datatables.net/plug-ins/1.10.20/i18n/Spanish.json"
+                    }
+                });
+            <?php elseif ($view === 'accesos'): ?>
+                $('#accesosTable').DataTable({
+                    "language": {
+                        "url": "//cdn.datatables.net/plug-ins/1.10.20/i18n/Spanish.json"
+                    }
+                });
+            <?php elseif ($view === 'tokens'): ?>
+                $('#tokensTable').DataTable({
+                    "language": {
+                        "url": "//cdn.datatables.net/plug-ins/1.10.20/i18n/Spanish.json"
+                    }
+                });
+            <?php endif; ?>
+
+            // No es necesario manejar clics en los botones para cambiar de vista,
+            // ya que se usan enlaces que recargan la página con el parámetro 'view'
+        });
+    </script>
+</body>
+</html>
+
+bitacora_auditoria.php
+
+<?php
+include '../includes/db.php';
+
+// Obtener parámetros de filtro
+$apellido = isset($_GET['apellido']) ? $_GET['apellido'] : '';
+$dni = isset($_GET['dni']) ? $_GET['dni'] : '';
+$accion = isset($_GET['accion']) ? $_GET['accion'] : '';
+$usuario = isset($_GET['usuario']) ? $_GET['usuario'] : '';
+$rol = isset($_GET['rol']) ? $_GET['rol'] : '';
+$fecha_inicio = isset($_GET['fecha_inicio']) ? $_GET['fecha_inicio'] : '';
+$fecha_fin = isset($_GET['fecha_fin']) ? $_GET['fecha_fin'] : '';
+
+// Obtener opciones para el filtro de rol
+$roles = ['personal', 'alumno', 'docente', 'directivo', 'administrativo', 'invitado'];
+
+// Construir la consulta con filtros
+$query = "
+    SELECT u.usuario, u.rol, p.nombre, p.apellido, p.dni, a.accion, a.descripcion, a.fecha 
+    FROM auditoria a 
+    JOIN usuarios u ON a.idUsuario = u.id 
+    JOIN personas p ON u.legajo = p.legajo 
+    WHERE 1=1
+";
+
+// Aplicar filtros si están establecidos
+$params = [];
+$types = '';
+
+if (!empty($apellido)) {
+    $query .= " AND p.apellido LIKE ?";
+    $params[] = '%' . $apellido . '%';
+    $types .= 's';
+}
+
+if (!empty($dni)) {
+    $query .= " AND p.dni = ?";
+    $params[] = $dni;
+    $types .= 's';
+}
+
+if (!empty($accion)) {
+    $query .= " AND a.accion = ?";
+    $params[] = $accion;
+    $types .= 's';
+}
+
+if (!empty($usuario)) {
+    $query .= " AND u.usuario LIKE ?";
+    $params[] = '%' . $usuario . '%';
+    $types .= 's';
+}
+
+if (!empty($rol)) {
+    $query .= " AND u.rol = ?";
+    $params[] = $rol;
+    $types .= 's';
+}
+
+if (!empty($fecha_inicio)) {
+    $query .= " AND a.fecha >= ?";
+    $params[] = $fecha_inicio;
+    $types .= 's';
+}
+
+if (!empty($fecha_fin)) {
+    $query .= " AND a.fecha <= ?";
+    $params[] = $fecha_fin;
+    $types .= 's';
+}
+
+// Preparar y ejecutar consulta
+$stmt = $conn->prepare($query);
+if (!empty($params)) {
+    $stmt->bind_param($types, ...$params);
+}
+$stmt->execute();
+$result = $stmt->get_result();
+?>
+
+<!-- Formulario de Filtro para Bitácora de Auditoría -->
+<form method="GET" class="mb-4">
+    <div class="form-row">
+        <!-- Filtro por Apellido -->
+        <div class="col-md-3">
+            <label for="apellido">Apellido:</label>
+            <input type="text" name="apellido" id="apellido" class="form-control" value="<?php echo htmlspecialchars($apellido); ?>" placeholder="Buscar por apellido">
+        </div>
+        <!-- Filtro por DNI -->
+        <div class="col-md-3">
+            <label for="dni">DNI:</label>
+            <input type="text" name="dni" id="dni" class="form-control" value="<?php echo htmlspecialchars($dni); ?>" placeholder="Buscar por DNI">
+        </div>
+        <!-- Filtro por Acción -->
+        <div class="col-md-3">
+            <label for="accion">Acción:</label>
+            <select name="accion" id="accion" class="form-control">
+                <option value="">Todas</option>
+                <?php foreach ($acciones as $acc): ?>
+                    <option value="<?php echo htmlspecialchars($acc); ?>" <?php echo ($accion === $acc) ? 'selected' : ''; ?>>
+                        <?php echo htmlspecialchars($acc); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <!-- Filtro por Usuario -->
+        <div class="col-md-3">
+            <label for="usuario">Usuario:</label>
+            <input type="text" name="usuario" id="usuario" class="form-control" value="<?php echo htmlspecialchars($usuario); ?>" placeholder="Buscar por usuario">
+        </div>
+    </div>
+    <div class="form-row mt-3">
+        <!-- Filtro por Rol -->
+        <div class="col-md-3">
+            <label for="rol">Rol:</label>
+            <select name="rol" id="rol" class="form-control">
+                <option value="">Todos</option>
+                <?php foreach ($roles as $r): ?>
+                    <option value="<?php echo htmlspecialchars($r); ?>" <?php echo ($rol === $r) ? 'selected' : ''; ?>>
+                        <?php echo htmlspecialchars($r); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <!-- Filtro por Fecha de Inicio -->
+        <div class="col-md-3">
+            <label for="fecha_inicio">Fecha Inicio:</label>
+            <input type="date" name="fecha_inicio" id="fecha_inicio" class="form-control" value="<?php echo htmlspecialchars($fecha_inicio); ?>">
+        </div>
+        <!-- Filtro por Fecha de Fin -->
+        <div class="col-md-3">
+            <label for="fecha_fin">Fecha Fin:</label>
+            <input type="date" name="fecha_fin" id="fecha_fin" class="form-control" value="<?php echo htmlspecialchars($fecha_fin); ?>">
+        </div>
+        <!-- Botones de Acción -->
+        <div class="col-md-3 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary mr-2">Filtrar</button>
+            <a href="bitacFront.php?view=auditoria" class="btn btn-secondary mr-2">Restablecer</a>
+        </div>
+    </div>
+</form>
+
+<table id="auditoriaTable" class="table table-striped table-bordered">
+    <thead>
+        <tr>
+            <th>Nombre</th>
+            <th>Apellido</th>
+            <th>DNI</th>
+            <th>Usuario</th>
+            <th>Rol</th>
+            <th>Acción</th>
+            <th>Descripción</th>
+            <th>Fecha</th>
+        </tr>
+    </thead>
+    <tbody>
+        <?php
+        if ($result->num_rows > 0) {
+            while ($row = $result->fetch_assoc()) {
+                echo "<tr>
+                        <td>" . htmlspecialchars($row['nombre'] ?? '') . "</td>
+                        <td>" . htmlspecialchars($row['apellido'] ?? '') . "</td>
+                        <td>" . htmlspecialchars($row['dni'] ?? '') . "</td>
+                        <td>" . htmlspecialchars($row['usuario'] ?? '') . "</td>
+                        <td>" . htmlspecialchars($row['rol'] ?? '') . "</td>
+                        <td>" . htmlspecialchars($row['accion'] ?? '') . "</td>
+                        <td>" . htmlspecialchars($row['descripcion'] ?? '') . "</td>
+                        <td>" . htmlspecialchars($row['fecha'] ?? '') . "</td>
+                    </tr>";
+            }
+        } else {
+            echo "<tr><td colspan='8'>No se encontraron registros.</td></tr>";
+        }
+        ?>
+    </tbody>
+</table>
+
+bitacora_accesos.php
+
+<?php
+include '../includes/db.php';
+
+// Obtener parámetros de filtro
+$apellido = isset($_GET['apellido']) ? $_GET['apellido'] : '';
+$dni = isset($_GET['dni']) ? $_GET['dni'] : '';
+$usuario = isset($_GET['usuario']) ? $_GET['usuario'] : '';
+$turno = isset($_GET['turno']) ? $_GET['turno'] : '';
+$estado = isset($_GET['estado']) ? $_GET['estado'] : '';
+$fecha_inicio = isset($_GET['fecha_inicio']) ? $_GET['fecha_inicio'] : '';
+$fecha_fin = isset($_GET['fecha_fin']) ? $_GET['fecha_fin'] : '';
+
+// Obtener opciones para el filtro de rol y estado de acceso
+$roles = ['personal', 'alumno', 'docente', 'directivo', 'administrativo', 'invitado'];
+$estados_acceso = ['dentro', 'fuera'];
+
+// Construir la consulta con filtros
+$query = "
+    SELECT u.usuario, u.rol, u.estado, p.nombre, p.apellido, p.dni, p.turno, ba.fechaIngreso, ba.fechaEgreso  
+    FROM bitacoraAccesos ba 
+    JOIN usuarios u ON ba.idUsuario = u.id 
+    JOIN personas p ON u.legajo = p.legajo 
+    WHERE 1=1
+";
+
+// Aplicar filtros si están establecidos
+$params = [];
+$types = '';
+
+if (!empty($apellido)) {
+    $query .= " AND p.apellido LIKE ?";
+    $params[] = '%' . $apellido . '%';
+    $types .= 's';
+}
+
+if (!empty($dni)) {
+    $query .= " AND p.dni = ?";
+    $params[] = $dni;
+    $types .= 's';
+}
+
+if (!empty($usuario)) {
+    $query .= " AND u.usuario LIKE ?";
+    $params[] = '%' . $usuario . '%';
+    $types .= 's';
+}
+
+if (!empty($turno)) {
+    $query .= " AND p.turno = ?";
+    $params[] = $turno;
+    $types .= 's';
+}
+
+if (!empty($estado)) {
+    $query .= " AND u.estado = ?";
+    $params[] = $estado;
+    $types .= 's';
+}
+
+if (!empty($fecha_inicio)) {
+    $query .= " AND ba.fechaIngreso >= ?";
+    $params[] = $fecha_inicio;
+    $types .= 's';
+}
+
+if (!empty($fecha_fin)) {
+    $query .= " AND ba.fechaEgreso <= ?";
+    $params[] = $fecha_fin;
+    $types .= 's';
+}
+
+// Preparar y ejecutar consulta
+$stmt = $conn->prepare($query);
+if (!empty($params)) {
+    $stmt->bind_param($types, ...$params);
+}
+$stmt->execute();
+$result = $stmt->get_result();
+?>
+
+<!-- Formulario de Filtro para Bitácora de Accesos -->
+<form method="GET" class="mb-4">
+    <input type="hidden" name="view" value="accesos"> <!-- Indica la vista actual -->
+    <div class="form-row">
+        <!-- Filtro por Apellido -->
+        <div class="col-md-3">
+            <label for="apellido">Apellido:</label>
+            <input type="text" name="apellido" id="apellido" class="form-control" value="<?php echo htmlspecialchars($apellido); ?>" placeholder="Buscar por apellido">
+        </div>
+        <!-- Filtro por DNI -->
+        <div class="col-md-3">
+            <label for="dni">DNI:</label>
+            <input type="text" name="dni" id="dni" class="form-control" value="<?php echo htmlspecialchars($dni); ?>" placeholder="Buscar por DNI">
+        </div>
+        <!-- Filtro por Usuario -->
+        <div class="col-md-3">
+            <label for="usuario">Usuario:</label>
+            <input type="text" name="usuario" id="usuario" class="form-control" value="<?php echo htmlspecialchars($usuario); ?>" placeholder="Buscar por usuario">
+        </div>
+        <!-- Filtro por Rol -->
+        <div class="col-md-3">
+            <label for="rol">Rol:</label>
+            <select name="rol" id="rol" class="form-control">
+                <option value="">Todos</option>
+                <?php foreach ($roles as $r): ?>
+                    <option value="<?php echo htmlspecialchars($r); ?>" <?php echo ($rol === $r) ? 'selected' : ''; ?>>
+                        <?php echo htmlspecialchars($r); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+    </div>
+    <div class="form-row mt-3">
+        <!-- Filtro por Turno -->
+        <div class="col-md-3">
+            <label for="turno">Turno:</label>
+            <select name="turno" id="turno" class="form-control">
+                <option value="">Todos</option>
+                <option value="Mañana" <?php echo ($turno === 'Mañana') ? 'selected' : ''; ?>>Mañana</option>
+                <option value="Tarde" <?php echo ($turno === 'Tarde') ? 'selected' : ''; ?>>Tarde</option>
+                <option value="Noche" <?php echo ($turno === 'Noche') ? 'selected' : ''; ?>>Noche</option>
+            </select>
+        </div>
+        <!-- Filtro por Estado -->
+        <div class="col-md-3">
+            <label for="estado">Estado:</label>
+            <select name="estado" id="estado" class="form-control">
+                <option value="">Todos</option>
+                <?php foreach ($estados_acceso as $estado_acceso): ?>
+                    <option value="<?php echo htmlspecialchars($estado_acceso); ?>" <?php echo ($estado === $estado_acceso) ? 'selected' : ''; ?>>
+                        <?php echo htmlspecialchars(ucfirst($estado_acceso)); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <!-- Filtro por Fecha de Ingreso -->
+        <div class="col-md-3">
+            <label for="fecha_inicio">Fecha Ingreso:</label>
+            <input type="date" name="fecha_inicio" id="fecha_inicio" class="form-control" value="<?php echo htmlspecialchars($fecha_inicio); ?>">
+        </div>
+        <!-- Filtro por Fecha de Egreso -->
+        <div class="col-md-3">
+            <label for="fecha_fin">Fecha Egreso:</label>
+            <input type="date" name="fecha_fin" id="fecha_fin" class="form-control" value="<?php echo htmlspecialchars($fecha_fin); ?>">
+        </div>
+    </div>
+    <div class="form-row mt-3">
+        <!-- Botones de Acción -->
+        <div class="col-md-12 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary mr-2">Filtrar</button>
+            <a href="bitacFront.php?view=accesos" class="btn btn-secondary mr-2">Restablecer</a>
+        </div>
+    </div>
+</form>
+
+<table id="accesosTable" class="table table-striped table-bordered">
+    <thead>
+        <tr>
+            <th>Nombre</th>
+            <th>Apellido</th>
+            <th>DNI</th>
+            <th>Usuario</th>
+            <th>Rol</th>
+            <th>Turno</th>
+            <th>Fecha Ingreso</th>
+            <th>Fecha Egreso</th>
+            <th>Estado</th>
+        </tr>
+    </thead>
+    <tbody>
+        <?php
+        if ($result->num_rows > 0) {
+            while ($row = $result->fetch_assoc()) {
+                echo "<tr>
+                        <td>" . htmlspecialchars($row['nombre'] ?? '') . "</td>
+                        <td>" . htmlspecialchars($row['apellido'] ?? '') . "</td>
+                        <td>" . htmlspecialchars($row['dni'] ?? '') . "</td>
+                        <td>" . htmlspecialchars($row['usuario'] ?? '') . "</td>
+                        <td>" . htmlspecialchars($row['rol'] ?? '') . "</td>
+                        <td>" . htmlspecialchars($row['turno'] ?? '') . "</td>
+                        <td>" . htmlspecialchars($row['fechaIngreso'] ?? '') . "</td>
+                        <td>" . htmlspecialchars($row['fechaEgreso'] ?? '') . "</td>
+                        <td>" . htmlspecialchars($row['estado'] ?? '') . "</td>
+                    </tr>";
+            }
+        } else {
+            echo "<tr><td colspan='9'>No se encontraron registros.</td></tr>";
+        }
+        ?>
+    </tbody>
+</table>
+
+bitacora_tokens.php
+
+<?php
+include '../includes/db.php';
+
+// Obtener parámetros de filtro
+$apellido = isset($_GET['apellido']) ? $_GET['apellido'] : '';
+$dni = isset($_GET['dni']) ? $_GET['dni'] : '';
+$usuario = isset($_GET['usuario']) ? $_GET['usuario'] : '';
+$turno = isset($_GET['turno']) ? $_GET['turno'] : '';
+$token = isset($_GET['token']) ? $_GET['token'] : '';
+$estado = isset($_GET['estado']) ? $_GET['estado'] : '';
+$fecha_inicio = isset($_GET['fecha_inicio']) ? $_GET['fecha_inicio'] : '';
+$fecha_fin = isset($_GET['fecha_fin']) ? $_GET['fecha_fin'] : '';
+$rol = isset($_GET['rol']) ? $_GET['rol'] : ''; // Agregar esto
+
+// Obtener opciones para el filtro de rol y estado de acceso
+$roles = ['personal', 'alumno', 'docente', 'directivo', 'administrativo', 'invitado'];
+$estados_acceso = ['dentro', 'fuera'];
+
+// Construir la consulta con filtros
+$query = "
+    SELECT u.usuario, u.rol, u.estado, p.nombre, p.apellido, p.dni, p.turno, t.token, t.fecha_creacion, t.fecha_expiracion 
+    FROM tokens t 
+    JOIN usuarios u ON t.usuario_id = u.id 
+    JOIN personas p ON u.legajo = p.legajo
+    WHERE 1=1
+";
+
+// Aplicar filtros si están establecidos
+$params = [];
+$types = '';
+
+if (!empty($apellido)) {
+    $query .= " AND p.apellido LIKE ?";
+    $params[] = '%' . $apellido . '%';
+    $types .= 's';
+}
+
+if (!empty($dni)) {
+    $query .= " AND p.dni = ?";
+    $params[] = $dni;
+    $types .= 's';
+}
+
+if (!empty($usuario)) {
+    $query .= " AND u.usuario LIKE ?";
+    $params[] = '%' . $usuario . '%';
+    $types .= 's';
+}
+
+if (!empty($turno)) {
+    $query .= " AND p.turno = ?";
+    $params[] = $turno;
+    $types .= 's';
+}
+
+if (!empty($token)) {
+    $query .= " AND t.token LIKE ?";
+    $params[] = '%' . $token . '%';
+    $types .= 's';
+}
+
+if (!empty($estado)) {
+    $query .= " AND u.estado = ?";
+    $params[] = $estado;
+    $types .= 's';
+}
+
+if (!empty($fecha_inicio)) {
+    $query .= " AND t.fecha_creacion >= ?";
+    $params[] = $fecha_inicio;
+    $types .= 's';
+}
+
+if (!empty($fecha_fin)) {
+    $query .= " AND t.fecha_expiracion <= ?";
+    $params[] = $fecha_fin;
+    $types .= 's';
+}
+
+// Filtro por rol
+if (!empty($rol)) {
+    $query .= " AND u.rol = ?";
+    $params[] = $rol;
+    $types .= 's';
+}
+
+// Preparar y ejecutar consulta
+$stmt = $conn->prepare($query);
+if (!empty($params)) {
+    $stmt->bind_param($types, ...$params);
+}
+$stmt->execute();
+$result = $stmt->get_result();
+?>
+
+<!-- Formulario de Filtro para Bitácora de Tokens -->
+<form method="GET" class="mb-4">
+    <input type="hidden" name="view" value="tokens"> <!-- Indica la vista actual -->
+    <div class="form-row">
+        <!-- Filtro por Apellido -->
+        <div class="col-md-3">
+            <label for="apellido">Apellido:</label>
+            <input type="text" name="apellido" id="apellido" class="form-control" value="<?php echo htmlspecialchars($apellido); ?>" placeholder="Buscar por apellido">
+        </div>
+        <!-- Filtro por DNI -->
+        <div class="col-md-3">
+            <label for="dni">DNI:</label>
+            <input type="text" name="dni" id="dni" class="form-control" value="<?php echo htmlspecialchars($dni); ?>" placeholder="Buscar por DNI">
+        </div>
+        <!-- Filtro por Usuario -->
+        <div class="col-md-3">
+            <label for="usuario">Usuario:</label>
+            <input type="text" name="usuario" id="usuario" class="form-control" value="<?php echo htmlspecialchars($usuario); ?>" placeholder="Buscar por usuario">
+        </div>
+        <!-- Filtro por Rol -->
+        <div class="col-md-3">
+            <label for="rol">Rol:</label>
+            <select name="rol" id="rol" class="form-control">
+                <option value="">Todos</option>
+                <?php foreach ($roles as $r): ?>
+                    <option value="<?php echo htmlspecialchars($r); ?>" <?php echo ($rol === $r) ? 'selected' : ''; ?>>
+                        <?php echo htmlspecialchars($r); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+    </div>
+    <div class="form-row mt-3">
+        <!-- Filtro por Turno -->
+        <div class="col-md-3">
+            <label for="turno">Turno:</label>
+            <select name="turno" id="turno" class="form-control">
+                <option value="">Todos</option>
+                <option value="Mañana" <?php echo ($turno === 'Mañana') ? 'selected' : ''; ?>>Mañana</option>
+                <option value="Tarde" <?php echo ($turno === 'Tarde') ? 'selected' : ''; ?>>Tarde</option>
+                <option value="Noche" <?php echo ($turno === 'Noche') ? 'selected' : ''; ?>>Noche</option>
+            </select>
+        </div>
+        <!-- Filtro por Token -->
+        <div class="col-md-3">
+            <label for="token">Token:</label>
+            <input type="text" name="token" id="token" class="form-control" value="<?php echo htmlspecialchars($token); ?>" placeholder="Buscar por token">
+        </div>
+        <!-- Filtro por Estado -->
+        <div class="col-md-3">
+            <label for="estado">Estado de Acceso:</label>
+            <select name="estado" id="estado" class="form-control">
+                <option value="">Todos</option>
+                <?php foreach ($estados_acceso as $estado_acceso): ?>
+                    <option value="<?php echo htmlspecialchars($estado_acceso); ?>" <?php echo ($estado === $estado_acceso) ? 'selected' : ''; ?>>
+                        <?php echo htmlspecialchars(ucfirst($estado_acceso)); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+    </div>
+    <div class="form-row mt-3">
+        <!-- Filtro por Fecha de Creación del Token -->
+        <div class="col-md-3">
+            <label for="fecha_inicio">Fecha Creación Token:</label>
+            <input type="date" name="fecha_inicio" id="fecha_inicio" class="form-control" value="<?php echo htmlspecialchars($fecha_inicio); ?>">
+        </div>
+        <!-- Filtro por Fecha de Expiración del Token -->
+        <div class="col-md-3">
+            <label for="fecha_fin">Fecha Expiración Token:</label>
+            <input type="date" name="fecha_fin" id="fecha_fin" class="form-control" value="<?php echo htmlspecialchars($fecha_fin); ?>">
+        </div>
+        <!-- Botones de Acción -->
+        <div class="col-md-6 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary mr-2">Filtrar</button>
+            <a href="bitacFront.php?view=tokens" class="btn btn-secondary mr-2">Restablecer</a>
+        </div>
+    </div>
+</form>
+
+<table id="tokensTable" class="table table-striped table-bordered">
+    <thead>
+        <tr>
+            <th>Nombre</th>
+            <th>Apellido</th>
+            <th>DNI</th>
+            <th>Usuario</th>
+            <th>Rol</th>
+            <th>Turno</th>
+            <th>Token</th>
+            <th>Fecha Creación</th>
+            <th>Fecha Expiración</th>
+            <th>Estado Acceso</th>
+        </tr>
+    </thead>
+    <tbody>
+        <?php
+        if ($result->num_rows > 0) {
+            while ($row = $result->fetch_assoc()) {
+                echo "<tr>
+                        <td>" . htmlspecialchars($row['nombre'] ?? '') . "</td>
+                        <td>" . htmlspecialchars($row['apellido'] ?? '') . "</td>
+                        <td>" . htmlspecialchars($row['dni'] ?? '') . "</td>
+                        <td>" . htmlspecialchars($row['usuario'] ?? '') . "</td>
+                        <td>" . htmlspecialchars($row['rol'] ?? '') . "</td>
+                        <td>" . htmlspecialchars($row['turno'] ?? '') . "</td>
+                        <td>" . htmlspecialchars($row['token'] ?? '') . "</td>
+                        <td>" . htmlspecialchars($row['fecha_creacion'] ?? '') . "</td>
+                        <td>" . htmlspecialchars($row['fecha_expiracion'] ?? '') . "</td>
+                        <td>" . htmlspecialchars($row['estado'] ?? '') . "</td>
+                    </tr>";
+            }
+        } else {
+            echo "<tr><td colspan='10'>No se encontraron registros.</td></tr>";
+        }
+        ?>
+    </tbody>
+</table>
+
+generate_report.php
+
+<?php
+include '../includes/db.php';
+
+// Obtener parámetros
+$view = isset($_GET['view']) ? $_GET['view'] : 'auditoria';
+$format = isset($_GET['format']) ? $_GET['format'] : 'csv'; // Cambia a 'csv' por defecto
+
+// Sanitizar parámetros
+$allowed_views = ['auditoria', 'accesos', 'tokens'];
+$allowed_formats = ['csv'];
+
+if (!in_array($view, $allowed_views)) {
+    die("Vista no válida para generar el reporte.");
+}
+
+if (!in_array($format, $allowed_formats)) {
+    die("Formato de reporte no válido.");
+}
+
+// Construir la consulta según la vista
+switch ($view) {
+    case 'auditoria':
+        $headers = ['Nombre', 'Apellido', 'DNI', 'Usuario', 'Rol', 'Acción', 'Descripción', 'Fecha'];
+        $query = "
+            SELECT p.nombre, p.apellido, p.dni, u.usuario, u.rol, a.accion, a.descripcion, a.fecha 
+            FROM auditoria a 
+            JOIN usuarios u ON a.idUsuario = u.id 
+            JOIN personas p ON u.legajo = p.legajo 
+            WHERE 1=1
+        ";
+
+        // Aplicar filtros si están definidos
+        if (!empty($_GET['apellido'])) {
+            $query .= " AND p.apellido LIKE '%" . $conn->real_escape_string($_GET['apellido']) . "%'";
+        }
+
+        if (!empty($_GET['accion'])) {
+            $query .= " AND a.accion = '" . $conn->real_escape_string($_GET['accion']) . "'";
+        }
+
+        if (!empty($_GET['usuario'])) {
+            $query .= " AND u.id = " . intval($_GET['usuario']);
+        }
+
+        break;
+
+    case 'accesos':
+        $headers = ['Nombre', 'Apellido', 'DNI', 'Usuario', 'Rol', 'Fecha Ingreso', 'Fecha Egreso', 'Estado'];
+        $query = "
+            SELECT p.nombre, p.apellido, p.dni, u.usuario, u.rol, ba.fechaIngreso, ba.fechaEgreso, ba.estado 
+            FROM bitacoraAccesos ba 
+            JOIN usuarios u ON ba.idUsuario = u.id 
+            JOIN personas p ON u.legajo = p.legajo 
+            WHERE 1=1
+        ";
+
+        // Aplicar filtros si están definidos
+        if (!empty($_GET['apellido'])) {
+            $query .= " AND p.apellido LIKE '%" . $conn->real_escape_string($_GET['apellido']) . "%'";
+        }
+
+        if (!empty($_GET['usuario'])) {
+            $query .= " AND u.id = " . intval($_GET['usuario']);
+        }
+
+        if (!empty($_GET['estado'])) {
+            $query .= " AND ba.estado = '" . $conn->real_escape_string($_GET['estado']) . "'";
+        }
+
+        if (!empty($_GET['fecha_inicio'])) {
+            $query .= " AND ba.fechaIngreso >= '" . $conn->real_escape_string($_GET['fecha_inicio']) . "'";
+        }
+
+        if (!empty($_GET['fecha_fin'])) {
+            $query .= " AND ba.fechaEgreso <= '" . $conn->real_escape_string($_GET['fecha_fin']) . "'";
+        }
+
+        break;
+
+    case 'tokens':
+        $headers = ['Nombre', 'Apellido', 'DNI', 'Usuario', 'Rol', 'Token', 'Fecha Creación', 'Fecha Expiración', 'Estado Acceso'];
+        $query = "
+            SELECT p.nombre, p.apellido, p.dni, u.usuario, u.rol, t.token, t.fecha_creacion, t.fecha_expiracion, ba.estado 
+            FROM tokens t 
+            JOIN usuarios u ON t.usuario_id = u.id 
+            JOIN personas p ON u.legajo = p.legajo
+            LEFT JOIN bitacoraAccesos ba ON t.usuario_id = ba.idUsuario
+            WHERE 1=1
+        ";
+
+        // Aplicar filtros si están definidos
+        if (!empty($_GET['apellido'])) {
+            $query .= " AND p.apellido LIKE '%" . $conn->real_escape_string($_GET['apellido']) . "%'";
+        }
+
+        if (!empty($_GET['token'])) {
+            $query .= " AND t.token LIKE '%" . $conn->real_escape_string($_GET['token']) . "%'";
+        }
+
+        if (!empty($_GET['usuario'])) {
+            $query .= " AND u.id = " . intval($_GET['usuario']);
+        }
+
+        if (!empty($_GET['estado'])) {
+            $query .= " AND ba.estado = '" . $conn->real_escape_string($_GET['estado']) . "'";
+        }
+
+        if (!empty($_GET['fecha_inicio'])) {
+            $query .= " AND t.fecha_creacion >= '" . $conn->real_escape_string($_GET['fecha_inicio']) . "'";
+        }
+
+        if (!empty($_GET['fecha_fin'])) {
+            $query .= " AND t.fecha_expiracion <= '" . $conn->real_escape_string($_GET['fecha_fin']) . "'";
+        }
+
+        break;
+
+    default:
+        die("Vista no válida para generar el reporte.");
+}
+
+// Ejecutar la consulta
+$result = $conn->query($query);
+
+// Verificar si la consulta tuvo éxito
+if (!$result) {
+    die("Error en la consulta: " . $conn->error);
+}
+
+// Generar el archivo CSV
+if ($format === 'csv') {
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . $view . '_reporte.csv"');
+
+    $output = fopen('php://output', 'w');
+
+    // Escribir los encabezados
+    fputcsv($output, $headers);
+
+    // Escribir los datos
+    while ($row = $result->fetch_assoc()) {
+        $csv_row = [];
+        foreach ($headers as $header) {
+            // Asignar los valores según el encabezado
+            switch ($header) {
+                case 'Nombre':
+                    $csv_row[] = $row['nombre'];
+                    break;
+                case 'Apellido':
+                    $csv_row[] = $row['apellido'];
+                    break;
+                case 'DNI':
+                    $csv_row[] = $row['dni'];
+                    break;
+                case 'Usuario':
+                    $csv_row[] = $row['usuario'];
+                    break;
+                case 'Rol':
+                    $csv_row[] = $row['rol'];
+                    break;
+                case 'Acción':
+                    $csv_row[] = $row['accion'];
+                    break;
+                case 'Descripción':
+                    $csv_row[] = $row['descripcion'];
+                    break;
+                case 'Fecha':
+                    $csv_row[] = $row['fecha'];
+                    break;
+                case 'Fecha Ingreso':
+                    $csv_row[] = $row['fechaIngreso'];
+                    break;
+                case 'Fecha Egreso':
+                    $csv_row[] = $row['fechaEgreso'];
+                    break;
+                case 'Estado':
+                    $csv_row[] = $row['estado'];
+                    break;
+                case 'Token':
+                    $csv_row[] = $row['token'];
+                    break;
+                case 'Fecha Creación':
+                    $csv_row[] = $row['fecha_creacion'];
+                    break;
+                case 'Fecha Expiración':
+                    $csv_row[] = $row['fecha_expiracion'];
+                    break;
+                case 'Estado Acceso':
+                    $csv_row[] = $row['estado'];
+                    break;
+                default:
+                    $csv_row[] = '';
+            }
+        }
+        fputcsv($output, $csv_row);
+    }
+
+    fclose($output);
+    exit();
+}
+?>
