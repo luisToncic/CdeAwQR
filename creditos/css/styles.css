@@ -1,0 +1,114 @@
+body {
+    background-color: #f8f9fa; /* Fondo gris claro */
+    color: #333;
+    font-family: 'Roboto', sans-serif; /* Fuente principal */
+}
+
+h1 {
+    color: #ffffff; /* Texto blanco */
+    margin-bottom: 40px;
+    font-size: 3rem;
+    text-align: center;
+    padding: 30px;
+    background: linear-gradient(135deg, #2C3E50, #4CA1AF); /* Degradado actualizado */
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2); /* Sombra más profunda */
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3); /* Sombra de texto mejorada */
+}
+
+h2 {
+    color: #4CA1AF; /* Color principal suave */
+    margin-top: 30px;
+    margin-bottom: 20px;
+    font-size: 1.75rem;
+    font-family: 'Lora', serif; /* Fuente secundaria para elegancia */
+}
+
+nav {
+    background-color: #34495E; /* Color de fondo para el header */
+    padding: 15px 0;
+}
+
+nav .navbar-brand {
+    color: #FFFFFF; /* Texto blanco */
+    font-size: 1.5rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+nav .nav-link {
+    color: #ecf0f1; /* Enlaces claros */
+    margin-right: 15px;
+    font-weight: 400;
+}
+
+nav .nav-link:hover {
+    color: #4CA1AF; /* Color del hover en los enlaces */
+}
+
+.contact-button {
+    right: 15px;
+    position: absolute;
+}
+
+.footer {
+    background-color: #f4f4f4; /* Fondo claro para el footer */
+    color: #333;
+    padding: 20px;
+    text-align: center;
+    border-top: 2px solid #4CA1AF; /* Línea superior con color degradado */
+    margin-top: 40px;
+}
+
+.card {
+    background-color: #ffffff;
+    border: 1px solid #bdc3c7; /* Borde claro */
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    transition: transform 0.2s, box-shadow 0.2s; /* Transiciones suaves */
+    position: relative; /* Para el botón de contacto */
+}
+
+.card:hover {
+    transform: scale(1.02);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2); /* Sombra más pronunciada en hover */
+}
+
+.description {
+    color: rgba(0, 0, 0, 0.7); /* Color de descripción más claro y transparente */
+}
+
+.btn-link {
+    color: #2980b9; /* Color del enlace */
+    transition: color 0.2s; /* Transición suave */
+}
+
+.btn-link:hover {
+    text-decoration: underline; /* Subrayado en hover */
+    color: #1f618d; /* Color más oscuro en hover */
+}
+
+.btn-primary {
+    background-color: #2980b9; /* Color del botón */
+    border-color: #2980b9; /* Color del borde */
+}
+
+.btn-primary:hover {
+    background-color: #1f618d; /* Color más oscuro en hover */
+    border-color: #1f618d; /* Color del borde en hover */
+}
+
+.form-control:focus {
+    border-color: #2980b9; /* Color del borde en el foco */
+    box-shadow: 0 0 5px rgba(41, 128, 185, 0.5); /* Sombra de foco */
+}
+
+@media (max-width: 768px) {
+    h1 {
+        font-size: 2.5rem; /* Ajuste de tamaño en pantallas pequeñas */
+    }
+    h2 {
+        font-size: 1.5rem; /* Ajuste de tamaño en pantallas pequeñas */
+    }
+}
